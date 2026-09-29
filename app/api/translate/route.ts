@@ -1,55 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import { translateDocx } from "@/lib/doctrans";
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import { writeFile } from 'fs/promises';
 
-export const runtime = "nodejs";
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const targetLang = formData.get("targetLang") as string | null;
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const sourceLang = formData.get('sourceLang') as string;
+    const targetLang = formData.get('targetLang') as string;
 
     if (!file) {
-      return NextResponse.json({ error: "Aucun fichier reçu" }, { status: 400 });
-    }
-    if (!targetLang) {
-      return NextResponse.json({ error: "Langue cible manquante" }, { status: 400 });
-    }
-    if (!file.name.endsWith(".docx")) {
-      return NextResponse.json(
-        { error: "Seuls les fichiers .docx sont supportés pour l'instant" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
     }
 
-    const apiKey = process.env.DEEPL_API_KEY;
-    console.log("DEBUG - clé lue par le serveur:", JSON.stringify(apiKey));
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "DEEPL_API_KEY non configurée sur le serveur" },
-        { status: 500 }
-      );
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const inputBuffer = Buffer.from(arrayBuffer);
+    const fileName = `${Date.now()}-${file.name}`;
+    const filePath = path.join(uploadsDir, fileName);
+    await writeFile(filePath, buffer);
 
-    const translatedBuffer = await translateDocx(inputBuffer, targetLang, apiKey);
-    const translatedBytes = Uint8Array.from(translatedBuffer);
+    console.log('Fichier reçu:', filePath);
+    console.log('Langue source:', sourceLang);
+    console.log('Langue cible:', targetLang);
 
-    return new NextResponse(translatedBytes, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="traduit-${file.name}"`,
-      },
+    return NextResponse.json({
+      success: true,
+      downloadUrl: `/uploads/${fileName}`,
+      message: 'Fichier reçu avec succès. Ajoutez ici votre logique de traduction DeepL / Google Translate.',
     });
-  } catch (err: any) {
-    console.error("Erreur de traduction:", err);
-    return NextResponse.json(
-      { error: err.message || "Erreur interne" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Erreur API translate:', error);
+    return NextResponse.json({ error: 'Erreur lors du traitement du fichier' }, { status: 500 });
   }
 }
