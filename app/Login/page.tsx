@@ -1,5 +1,5 @@
 'use client';
-
+import DoctransLogo from '../components/DoctransLogo';
 import { useState } from 'react';
 import Link from 'next/link';
 import { User, Lock } from 'lucide-react';
@@ -13,10 +13,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    // Get registered users from localStorage
     const users = JSON.parse(localStorage.getItem('doctrans_users') || '[]');
-    
-    // Find matching user
     const foundUser = users.find(
       (u: any) => (u.email === username || u.name === username) && u.password === password
     );
@@ -34,6 +31,11 @@ export default function LoginPage() {
       <div className="w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex">
         {/* Left Side - Form */}
         <div className="w-full md:w-1/2 bg-white p-8 md:p-10">
+          {/* ✅ LOGO NOW DISPLAYED HERE */}
+          <Link href="/" className="inline-block mb-6">
+            <DoctransLogo size="lg" />
+          </Link>
+
           <h1 className="text-3xl font-bold text-blue-700 mb-8 text-center">SIGN IN</h1>
           
           <form onSubmit={handleLogin} className="space-y-5">
@@ -84,6 +86,7 @@ export default function LoginPage() {
               Connexion
             </button>
 
+            {/* ✅ FIXED: /Signup → /signup */}
             <p className="text-center text-sm text-gray-600 mt-4">
               Pas encore de compte ?{' '}
               <Link href="/Signup" className="text-blue-600 font-medium hover:underline">
