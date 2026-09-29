@@ -2,27 +2,37 @@
 import DoctransLogo from '../components/DoctransLogo';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, Lock } from 'lucide-react';
+import { supabase } from '../api/utils/supabase';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const users = JSON.parse(localStorage.getItem('doctrans_users') || '[]');
-    const foundUser = users.find(
-      (u: any) => (u.email === username || u.name === username) && u.password === password
-    );
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (foundUser) {
-      localStorage.setItem('doctrans_user', JSON.stringify(foundUser));
-      window.location.href = '/translate';
-    } else {
-      setError('Identifiants incorrects. Veuillez vérifier vos informations.');
+      if (authError) throw authError;
+      
+      // Success — redirect to dashboard
+      router.push('/translate');
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || 'Erreur de connexion. Vérifiez vos identifiants.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,7 +41,6 @@ export default function LoginPage() {
       <div className="w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex">
         {/* Left Side - Form */}
         <div className="w-full md:w-1/2 bg-white p-8 md:p-10">
-          {/* ✅ LOGO NOW DISPLAYED HERE */}
           <Link href="/" className="inline-block mb-6">
             <DoctransLogo size="lg" />
           </Link>
@@ -48,10 +57,10 @@ export default function LoginPage() {
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nom d'utilisateur ou email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Adresse email"
                 required
                 className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
@@ -81,15 +90,15 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition"
+              disabled={loading}
+              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
             >
-              Connexion
+              {loading ? 'Connexion en cours...' : 'Connexion'}
             </button>
 
-            {/* ✅ FIXED: /Signup → /signup */}
             <p className="text-center text-sm text-gray-600 mt-4">
               Pas encore de compte ?{' '}
-              <Link href="/Signup" className="text-blue-600 font-medium hover:underline">
+              <Link href="/signup" className="text-blue-600 font-medium hover:underline">
                 S'inscrire
               </Link>
             </p>

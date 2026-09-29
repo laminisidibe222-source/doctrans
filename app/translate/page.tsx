@@ -1,7 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Upload, Globe, Download, FileText, LogOut, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Upload, Globe, Download, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
+import DoctransLogo from '../components/DoctransLogo';
+import { supabase } from '../api/utils/supabase';
 
 export default function TranslatePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -11,7 +14,9 @@ export default function TranslatePage() {
   const [progress, setProgress] = useState(0);
   const [isDone, setIsDone] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const languages = [
     { code: 'fr', name: 'Français' }, { code: 'en', name: 'Anglais' },
@@ -22,13 +27,30 @@ export default function TranslatePage() {
   ];
 
   useEffect(() => {
-    const saved = localStorage.getItem('doctrans_user');
-    if (!saved) {
-      window.location.href = '/login';
-      return;
-    }
-    setCurrentUser(JSON.parse(saved));
-  }, []);
+    // Check active session with Supabase
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      setUser(session.user);
+      setLoading(false);
+    };
+    checkUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) router.push('/login');
+      else setUser(session.user);
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
   const handleTranslate = async () => {
     if (!file) return;
@@ -65,27 +87,20 @@ export default function TranslatePage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('doctrans_user');
-    window.location.href = '/';
-  };
-
-  if (!currentUser) return null;
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white">
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <FileText className="w-7 h-7 text-blue-600" />
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Doctrans
-            </span>
+          <Link href="/">
+            <DoctransLogo size="md" />
           </Link>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <User className="w-4 h-4 text-blue-600" />
-              <span className="font-medium">{currentUser.name || currentUser.email}</span>
+              <span className="font-medium">{user.user_metadata?.full_name || user.email}</span>
             </div>
             <button
               onClick={handleLogout}
@@ -118,7 +133,6 @@ export default function TranslatePage() {
                 <label htmlFor="file-upload" className="cursor-pointer">
                   {file ? (
                     <div>
-                      <FileText className="w-10 h-10 text-blue-600 mx-auto mb-2" />
                       <span className="text-blue-600 font-medium">{file.name}</span>
                     </div>
                   ) : (

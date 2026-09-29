@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "app/api/translate/route.js"  ],
+, "app/api/translate/route.js", "app/api/utils/supabase.ts"  ],
   "exclude": ["node_modules"]
 }

@@ -1,54 +1,59 @@
 'use client';
-
+import DoctransLogo from '../components/DoctransLogo';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { supabase } from '../api/utils/supabase';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.');
       return;
     }
-
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères.');
       return;
     }
 
-    // Get existing users or start fresh
-    const users = JSON.parse(localStorage.getItem('doctrans_users') || '[]');
-    
-    // Check if email already exists
-    if (users.find((u: any) => u.email === email)) {
-      setError('Cet email est déjà utilisé. Veuillez vous connecter.');
-      return;
-    }
+    setLoading(true);
+    try {
+      // 1. Create auth user in Supabase
+      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name }
+        }
+      });
 
-    // Add new user
-    const newUser = { name, email, password, createdAt: new Date().toISOString() };
-    users.push(newUser);
-    localStorage.setItem('doctrans_users', JSON.stringify(users));
-    
-    // Auto-login
-    localStorage.setItem('doctrans_user', JSON.stringify(newUser));
-    setSuccess(true);
-    
-    // Redirect after 1.5s
-    setTimeout(() => {
-      window.location.href = '/translate';
-    }, 1500);
+      if (signUpError) throw signUpError;
+
+      if (!user) {
+        setSuccess(true); // Email confirmation may be required
+      } else {
+        // Auto-login success
+        router.push('/translate');
+        router.refresh();
+      }
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de la création du compte.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -61,7 +66,10 @@ export default function SignupPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Compte créé !</h2>
-          <p className="text-gray-600">Redirection en cours...</p>
+          <p className="text-gray-600 mb-4">Vérifiez votre email pour confirmer votre compte.</p>
+          <Link href="/login" className="text-blue-600 font-medium hover:underline">
+            Aller à la connexion
+          </Link>
         </div>
       </div>
     );
@@ -87,6 +95,10 @@ export default function SignupPage() {
 
         {/* Right Side - Form */}
         <div className="w-full md:w-1/2 bg-white p-8 md:p-10">
+          <Link href="/" className="inline-block mb-6">
+            <DoctransLogo size="lg" />
+          </Link>
+
           <h1 className="text-3xl font-bold text-blue-700 mb-8 text-center">S'INSCRIRE</h1>
           
           <form onSubmit={handleSignup} className="space-y-4">
@@ -146,10 +158,11 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Créer mon compte
-              <ArrowRight className="w-5 h-5" />
+              {loading ? 'Création en cours...' : 'Créer mon compte'}
+              {!loading && <ArrowRight className="w-5 h-5" />}
             </button>
 
             <p className="text-center text-sm text-gray-600 mt-4">
