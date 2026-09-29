@@ -52,7 +52,7 @@ export default function HomePage() {
                 Tarifs
               </a>
               <Link
-                href="/login"
+                href="/Login"
                 className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition"
               >
                 Connexion
@@ -86,7 +86,7 @@ export default function HomePage() {
               <a href="#pricing" className="py-2 text-sm">
                 Tarifs
               </a>
-              <Link href="/login" className="py-2 text-sm">
+              <Link href="/Login" className="py-2 text-sm">
                 Connexion
               </Link>
               <Link
