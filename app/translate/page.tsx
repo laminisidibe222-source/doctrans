@@ -44,7 +44,7 @@ export default function TranslatePage() {
 
         if (!session) {
           console.log('No session found — redirecting to login');
-          router.push('/login');
+          router.push('/Login');
           return;
         }
 
@@ -54,7 +54,7 @@ export default function TranslatePage() {
         if (!cancelled) {
           console.error('Auth check failed:', err);
           setErrorMsg(err.message || 'Erreur de connexion à Supabase');
-          router.push('/login');
+          router.push('/Login');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -65,7 +65,7 @@ export default function TranslatePage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!cancelled) {
-        if (!session) router.push('/login');
+        if (!session) router.push('/Login');
         else setUser(session.user);
         setLoading(false);
       }
