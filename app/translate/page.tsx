@@ -16,6 +16,7 @@ export default function TranslatePage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
   const languages = [
@@ -27,25 +28,63 @@ export default function TranslatePage() {
   ];
 
   useEffect(() => {
-    // Check active session with Supabase
+    let cancelled = false;
+
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
+      try {
+        console.log('Checking Supabase session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (cancelled) return;
+
+        if (error) {
+          console.error('Session error:', error);
+          throw error;
+        }
+
+        if (!session) {
+          console.log('No session found — redirecting to login');
+          router.push('/login');
+          return;
+        }
+
+        console.log('User authenticated:', session.user.email);
+        setUser(session.user);
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('Auth check failed:', err);
+          setErrorMsg(err.message || 'Erreur de connexion à Supabase');
+          router.push('/login');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setUser(session.user);
-      setLoading(false);
     };
+
     checkUser();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) router.push('/login');
-      else setUser(session.user);
+      if (!cancelled) {
+        if (!session) router.push('/login');
+        else setUser(session.user);
+        setLoading(false);
+      }
     });
-    return () => subscription.unsubscribe();
-  }, [router]);
+
+    // ⏱️ Timeout after 5 seconds — prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (!cancelled && loading) {
+        setErrorMsg('La connexion expire — vérifiez vos clés Supabase');
+        setLoading(false);
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [router, loading]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -87,7 +126,29 @@ export default function TranslatePage() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-lg">Chargement...</p>
+        <p className="text-sm text-gray-500 mt-2">Vérifiez la console (F12) pour les détails</p>
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6">
+        <div className="bg-red-50 text-red-600 p-6 rounded-xl max-w-md text-center">
+          <h3 className="font-bold text-lg mb-2">Erreur de connexion</h3>
+          <p className="mb-4">{errorMsg}</p>
+          <button onClick={() => router.push('/login')} className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+            Aller à la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
