@@ -1,180 +1,135 @@
 'use client';
-import DoctransLogo from '../components/DoctransLogo';
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Lock, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '../api/utils/supabase';
+import DoctransLogo from '../components/DoctransLogo';
 
 export default function SignupPage() {
-  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) router.replace('/translate');
+    };
+    check();
+  }, [router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.');
-      return;
-    }
-
     setLoading(true);
+
     try {
-      // 1. Create auth user in Supabase
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { full_name: name }
-        }
+        options: { data: { full_name: fullName } }
       });
-
-      if (signUpError) throw signUpError;
-
-      if (!user) {
-        setSuccess(true); // Email confirmation may be required
-      } else {
-        // Auto-login success
-        router.push('/translate');
-        router.refresh();
-      }
+      if (error) throw error;
+      router.push('/translate');
     } catch (err: any) {
-      setError(err.message || "Erreur lors de la création du compte.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-md">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Compte créé !</h2>
-          <p className="text-gray-600 mb-4">Vérifiez votre email pour confirmer votre compte.</p>
-          <Link href="/login" className="text-blue-600 font-medium hover:underline">
-            Aller à la connexion
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex">
-        {/* Left Side - Decorative */}
-        <div className="hidden md:block w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative shapes */}
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-br from-blue-600 via-indigo-700 to-indigo-800 rounded-l-[4rem] hidden lg:block" />
+      <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl" />
+      <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-5xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 relative z-10">
+        {/* Left — Decorative Side */}
+        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-blue-600 via-indigo-700 to-indigo-800 text-white p-8 relative overflow-hidden order-1 lg:order-1">
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-10 left-10 w-20 h-20 border-2 border-white/40 rounded-full"></div>
-            <div className="absolute top-32 right-16 w-16 h-16 border-2 border-white/40 rotate-45"></div>
-            <div className="absolute bottom-20 left-20 w-24 h-24 border-2 border-white/40 rounded-full"></div>
-            <div className="absolute bottom-10 right-10 w-8 h-8 bg-white/30 rounded-full"></div>
-            <div className="absolute top-1/2 left-1/3 w-12 h-12 border-2 border-white/40 rotate-12"></div>
+            <div className="absolute top-10 right-10 w-20 h-20 bg-white rounded-full blur-xl" />
+            <div className="absolute bottom-20 left-10 w-32 h-32 bg-white rounded-full blur-xl" />
+            <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-white rounded-full blur-xl -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/80 text-center px-6">
-            <p className="text-lg font-semibold">Rejoignez-nous</p>
-            <p className="text-sm opacity-70">Commencez à traduire vos documents dès aujourd'hui</p>
+          <div className="relative z-10 text-center">
+            <h2 className="text-2xl font-bold mb-4">Rejoignez-nous !</h2>
+            <p className="text-blue-100 max-w-xs">
+              Créez votre compte et commencez à traduire vos documents dès aujourd'hui. Rapide, gratuit et sécurisé.
+            </p>
           </div>
         </div>
 
-        {/* Right Side - Form */}
-        <div className="w-full md:w-1/2 bg-white p-8 md:p-10">
-          <Link href="/" className="inline-block mb-6">
+        {/* Right — Form */}
+        <div className="p-8 lg:p-12 flex flex-col justify-center order-2 lg:order-2">
+          <div className="mb-8">
             <DoctransLogo size="lg" />
-          </Link>
+            <h1 className="text-3xl font-bold text-gray-900 mt-8">S'inscrire</h1>
+            <p className="text-gray-500 mt-2">Créez votre compte Doctrans</p>
+          </div>
 
-          <h1 className="text-3xl font-bold text-blue-700 mb-8 text-center">S'INSCRIRE</h1>
-          
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSignup} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center">
-                {error}
-              </div>
-            )}
-
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nom complet"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Votre nom"
                 required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
             </div>
 
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Adresse email"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="vous@exemple.com"
                 required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mot de passe"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Au moins 6 caractères"
                 required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
-              />
-            </div>
-
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirmer le mot de passe"
-                required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg mt-2"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}
-              {!loading && <ArrowRight className="w-5 h-5" />}
             </button>
-
-            <p className="text-center text-sm text-gray-600 mt-4">
-              Déjà un compte ?{' '}
-              <Link href="/login" className="text-blue-600 font-medium hover:underline">
-                Se connecter
-              </Link>
-            </p>
           </form>
 
-          <p className="text-xs text-gray-400 text-center mt-10">
-            © 2026 Doctrans. Tous droits réservés.
+          <p className="mt-8 text-center text-sm text-gray-500">
+            Déjà un compte ?{' '}
+            <Link href="/Login" className="text-blue-600 font-semibold hover:underline">
+              Se connecter
+            </Link>
           </p>
         </div>
       </div>

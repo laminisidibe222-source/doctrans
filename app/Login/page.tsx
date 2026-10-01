@@ -1,17 +1,38 @@
 'use client';
-import DoctransLogo from '../components/DoctransLogo';
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '../api/utils/supabase';
+import DoctransLogo from '../components/DoctransLogo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!cancelled) {
+        if (session) {
+          // Already logged in — redirect
+          router.replace('/translate');
+        } else {
+          // No session — show form
+          setCheckingSession(false);
+        }
+      }
+    };
+
+    checkSession();
+    return () => { cancelled = true; };
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,109 +40,93 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
-
-      if (authError) throw authError;
-      
-      // Success — redirect to dashboard
+      if (error) throw error;
       router.push('/translate');
-      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion. Vérifiez vos identifiants.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Vérification...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex">
-        {/* Left Side - Form */}
-        <div className="w-full md:w-1/2 bg-white p-8 md:p-10">
-          <Link href="/" className="inline-block mb-6">
-            <DoctransLogo size="lg" />
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 hidden lg:block" />
+      <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl" />
+      <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl" />
 
-          <h1 className="text-3xl font-bold text-blue-700 mb-8 text-center">SIGN IN</h1>
-          
+      <div className="w-full max-w-5xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 relative z-10">
+        <div className="p-8 lg:p-12 flex flex-col justify-center">
+          <DoctransLogo size="lg" />
+          <h1 className="text-3xl font-bold text-gray-900 mt-8 mb-2">Connexion</h1>
+          <p className="text-gray-500 mb-8">Accédez à votre espace de traduction</p>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center">
-                {error}
-              </div>
-            )}
-
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Adresse email"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="vous@exemple.com"
                 required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
             </div>
-
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mot de passe"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••••"
                 required
-                className="w-full pl-10 pr-4 py-3 border-b-2 border-gray-200 focus:border-blue-600 outline-none transition bg-transparent"
               />
             </div>
-
-            <div className="flex items-center justify-between text-sm mt-2">
-              <label className="flex items-center gap-2 text-gray-600 cursor-pointer">
-                <input type="checkbox" className="accent-blue-600" />
-                Se souvenir de moi
-              </label>
-              <Link href="#" className="text-blue-600 hover:underline">
-                Mot de passe oublié ?
-              </Link>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 bg-gradient-to-r from-blue-700 to-blue-900 text-white py-3 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50"
             >
-              {loading ? 'Connexion en cours...' : 'Connexion'}
+              {loading ? 'Connexion...' : 'Se connecter'}
             </button>
-
-            <p className="text-center text-sm text-gray-600 mt-4">
-              Pas encore de compte ?{' '}
-              <Link href="/Signup" className="text-blue-600 font-medium hover:underline">
-                S'inscrire
-              </Link>
-            </p>
           </form>
 
-          <p className="text-xs text-gray-400 text-center mt-10">
-            © 2026 Doctrans. Tous droits réservés.
+          <p className="mt-8 text-center text-sm text-gray-500">
+            Pas encore de compte ?{' '}
+            <Link href="/signup" className="text-blue-600 font-semibold hover:underline">
+              S'inscrire
+            </Link>
           </p>
         </div>
 
-        {/* Right Side - Decorative */}
-        <div className="hidden md:block w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-10 left-10 w-20 h-20 border-2 border-white/40 rounded-full"></div>
-            <div className="absolute top-32 right-16 w-16 h-16 border-2 border-white/40 rotate-45"></div>
-            <div className="absolute bottom-20 left-20 w-24 h-24 border-2 border-white/40 rounded-full"></div>
-            <div className="absolute bottom-10 right-10 w-8 h-8 bg-white/30 rounded-full"></div>
-            <div className="absolute top-1/2 left-1/3 w-12 h-12 border-2 border-white/40 rotate-12"></div>
-          </div>
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/80 text-center px-6">
-            <p className="text-lg font-semibold">Traduisez sans limites</p>
-            <p className="text-sm opacity-70">Préservez la mise en forme de vos documents</p>
-          </div>
+        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 text-white p-8">
+          <h2 className="text-2xl font-bold mb-4">Bienvenue sur Doctrans ✨</h2>
+          <p className="text-blue-100 text-center max-w-xs">
+            Traduisez vos documents en toute simplicité. La mise en forme est préservée, la qualité est professionnelle.
+          </p>
         </div>
       </div>
     </div>

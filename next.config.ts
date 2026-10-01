@@ -1,9 +1,11 @@
-import type { NextConfig } from "next";
-import path from "path";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.join(__dirname),
+  // ✅ New format for body size limit in Next.js 15+
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
 };
 
